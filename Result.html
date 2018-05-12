@@ -1,0 +1,224 @@
+
+<!DOCTYPE html>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<html>
+<head>
+    <title>Halloway Results</title>
+    <meta http-equiv='Content-Type' content='text/html; charset=utf-8'/>
+    <style type='text/css'>body{margin:0;padding:0;overflow:hidden;font-family:'Segoe UI',Helvetica,Arial,Sans-Serif}</style>
+    <script src="jquery-3.3.1.js"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            font-size: 1em;
+            color: #333;
+            background-color: #ddd;
+        }
+
+        label {
+            clear: both;
+            display: block;
+            font-size: 0.85em;
+            font-weight: bold;
+            padding: 0.8em 0 0.2em 0;
+            user-select: none;
+        }
+
+        input, button {
+            float: left;
+            font-size: 1em;
+            padding: 3px 6px;
+            margin: 0;
+            border: 1px solid #333;
+            outline: 0;
+            box-shadow: none;
+        }
+
+        ::-moz-focus-inner {
+            padding: 0;
+            border: 0;
+        }
+
+        input {
+            width: 15em;
+            background-color: #fff;
+            border-right: 0 none;
+            border-radius: 3px 0 0 3px;
+        }
+
+        button {
+            position: relative;
+            background-color: #aaa;
+            border-radius: 0 3px 3px 0;
+            cursor: pointer;
+        }
+
+        .copied::after {
+            position: absolute;
+            top: 12%;
+            right: 110%;
+            display: block;
+            content: "copied";
+            font-size: 0.75em;
+            padding: 2px 3px;
+            color: #fff;
+            background-color: #22a;
+            border-radius: 3px;
+            opacity: 0;
+            will-change: opacity, transform;
+            animation: showcopied 1.5s ease;
+        }
+
+        @keyframes showcopied {
+            0% {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+            70% {
+                opacity: 1;
+                transform: translateX(0);
+            }
+            100% {
+                opacity: 0;
+            }
+        }
+        .float{
+
+            position: fixed;
+            bottom: 30px;
+            width: 100%;
+            padding-bottom: 10px;
+            z-index: 4;
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            background: #333333;
+        }
+    </style>
+    <script type='text/javascript' src='https://www.bing.com/api/maps/mapcontrol?key=AuA6fw00cOgbJ0X0Ym6E6SdtKFA6ME9Q8UTnoy4odVwPAogGl-T31yNcDkN63Zp7&callback=loadMapScenario' async defer></script>
+    <script type="text/javascript" src="https://ecn.dev.virtualearth.net/mapcontrol/mapcontrol.ashx?v=7.0"></script>
+    <script type='text/javascript'>
+        function showaddress(address,link) {
+            document.getElementById("ss").style.display="flex";
+            document.getElementById("website").value=address;
+            document.getElementById("twitter").value=link;
+
+        }
+        navigator.geolocation.getCurrentPosition(loadMapScenarios);
+        function loadMapScenarios(location) {
+            var CurrentLocation=location.coords;
+            console.log(CurrentLocation);
+            var map = new Microsoft.Maps.Map(document.getElementById('myMap'), {zoom:12, center: CurrentLocation});
+            $.ajax({
+                url:"https://halloway.net/halloway/MakeOrder.php",
+                data:{
+                    q:2
+                },
+                success:function (msg) {
+                    console.log(msg);
+                    console.log("run");
+
+
+                    msg.forEach(function (value,index) {
+                        console.log(value);
+                        var a=value.position;
+                        var b=value.name;
+                        var lat=a[0].slice(4);
+                        var lon=a[1].slice(4);
+                        console.log(lat+lon);
+                        var infobox = new Microsoft.Maps.Infobox(new Microsoft.Maps.Location(lat,lon), { title: b.slice(5),
+                            description: value.discribe.slice(4), visible: false,actions:[{
+                                label:'到达目的地',eventHandler:function () {
+                                    showaddress(value.address.slice(9),"http://maps.apple.com/?daddr="+value.address.slice(9)+"&saddr=")
+                                }
+                            }] });
+                        infobox.setMap(map);
+                        var pushpin=new Microsoft.Maps.Pushpin(new Microsoft.Maps.Location(lat,lon),{title:b.slice(5)});
+
+                        Microsoft.Maps.Events.addHandler(pushpin, 'click', function () {
+                            infobox.setOptions({ visible: true });
+                        });
+                        map.entities.push(pushpin);
+
+
+                    })
+
+                }
+
+
+            });
+
+        }
+    </script>
+</head>
+
+<body>
+<script type="text/javascript">
+    console.log("good");
+    /*
+	Copy text from any appropriate field to the clipboard
+  By Craig Buckler, @craigbuckler
+  use it, abuse it, do whatever you like with it!
+*/
+    (function() {
+
+        'use strict';
+
+        // click events
+        document.body.addEventListener('click', copy, true);
+
+        // event handler
+        function copy(e) {
+
+            // find target element
+            var
+                t = e.target,
+                c = t.dataset.copytarget,
+                inp = (c ? document.querySelector(c) : null);
+
+            // is element selectable?
+            if (inp && inp.select) {
+
+                // select text
+                inp.select();
+
+                try {
+                    // copy text
+                    document.execCommand('copy');
+                    inp.blur();
+
+                    // copied animation
+                    t.classList.add('copied');
+                    setTimeout(function() { t.classList.remove('copied'); }, 1500);
+                }
+                catch (err) {
+                    alert('please press Ctrl/Cmd+C to copy');
+                }
+
+            }
+
+        }
+
+    })();
+
+
+
+</script>
+<div id='printoutPanel'></div>
+<div class="float" id="ss" style="display: none">
+    <div> <label  style="color: white;" for="website">>黏贴到地图软件中获取导航</label>
+        <input  maxlength="0" id="website"  value="http://www.sitepoint.com/" />
+        <button data-copytarget="#website">copy</button></div>
+
+    <div> <label for="twitter"></label>
+        <input  maxlength="0" type="text" id="twitter" value="https://twitter.com/craigbuckler" />
+        <button data-copytarget="#twitter">copy</button></div>
+
+</div>
+
+<div id='myMap' style='width: 100vw; height: 100vh;'></div>
+
+
+
+</body>
+</html>

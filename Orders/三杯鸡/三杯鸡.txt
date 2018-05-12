@@ -1,0 +1,10 @@
+Lat:51.48627
+Lon:6.87857
+Name:三杯鸡
+Position:Essener Straße, 46047 奥伯豪森, 德国
+Type火锅
+Payment:选择支付方式
+Range25
+Discribe:
+Person:0不限
+AvgCost:0

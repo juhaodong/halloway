@@ -1,0 +1,10 @@
+Lat:51.51158
+Lon:6.71083
+Name:dsasdas
+Position:Leinensteg, 47199 杜伊斯堡, 德国
+Type火锅
+Payment:现金支付
+Range15
+Discribe:
+Person:女
+AvgCost:ada

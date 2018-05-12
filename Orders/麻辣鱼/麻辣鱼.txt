@@ -1,0 +1,10 @@
+Lat:51.55957
+Lon:6.73094
+Name:麻辣鱼
+Position:Kreuzstraße 45473, 46535 丁斯拉肯, 德国
+Type火锅
+Payment:选择支付方式
+Range25
+Discribe:非常好吃的麻辣鱼
+Person:0不限
+AvgCost:0

@@ -1,0 +1,10 @@
+Lat:51.42807
+Lon:6.88486
+Name:红烧肉
+Position:Leineweberstraße, 45468 鲁尔河畔米尔海姆, 德国
+Type火锅
+Payment:选择支付方式
+Range25
+Discribe:
+Person:0男
+AvgCost:0
