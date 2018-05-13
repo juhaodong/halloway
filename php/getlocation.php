@@ -18,6 +18,7 @@ echo $rgOutput;
 
 
 
+
 /*$place_url='https://maps.googleapis.com/maps/api/geocode/json??latLng='.$latitude.','.$longitude.'&key=AIzaSyBIkKAd0S2KirZNraqalVd8QfYf_SkRyms';
 $json_place=file_get_contents($place_url);
 $place_arr=json_decode($json_place,true);
