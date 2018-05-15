@@ -96,7 +96,6 @@ class SqlInsert implements ISql
                 join(", ", array_keys($column_value_pairs)),
                 join(", ", array_values($column_value_pairs)));
 
-        parent::__construct($this->sql);
     }
 
     public function get_sql()
@@ -218,13 +217,42 @@ function common_execute_procedure(ISql $sql, $succeed = 'good', $failed = null)
 }
 
 $EVENT_ARGS = array('id', 'EventID', 'CreatTimeStamp', 'Country', 'City', 'CreaterID', 'Latitude', 'Longitude',
-    'Address', 'EventName', 'EventSign', 'Type', 'Ginder', 'AvgCost', 'NeedPermission', 'ImagePath', 'EndTime', 'Avaliable',
-    'CreaterContact', 'needContact');
-
+    'Address', 'EventName', 'EventSign', 'Type', 'Ginder', 'AvgCost', 'NeedPermission', 'ImagePath', 'EndTime',
+    'Avaliable', 'CreaterContact', 'needContact');
+$USER_INFO = array('Name', 'Role', 'Gender', 'Wechat', 'Phone', 'Email', 'QQ', 'WhatsApp');
 $USER_EVENT_RELATION_MEMBER = 'member';
 $USER_EVENT_RELATION_CREATE = 'create';
 $USER_EVENT_RELATION_CHECKING = 'checking';
 $USER_EVENT_RELATION_WANT_IN = 'wantIn';
+
+function get_event_member_detailed_info(mysqli $conn, $event_id)
+{
+    global $USER_EVENT_RELATION_MEMBER;
+    global $USER_EVENT_RELATION_CREATE;
+    $member_event_info = (new SqlSelect($conn, array('*'), 'Relation',
+        array(sprintf("(EventID='%s')", $event_id),
+            sprintf("(Type='%s' OR Type='%s')", $USER_EVENT_RELATION_MEMBER, $USER_EVENT_RELATION_CREATE)
+        )))->execute_sql();
+
+    $members = array();
+    foreach ($member_event_info as $member) {
+        $member_info = (new SqlSelect($conn, array('*'), 'User',
+            array(sprintf("UserID='%s'", $member['UserID']))))->execute_sql()[0];
+
+        $member_info['ShowContact'] = $member['ShowContact'];
+        $member_info['Message'] = $member['Message'];
+        array_push($members, $member_info);
+    }
+    return $members;
+}
+
+function get_user_event_relation(mysqli $conn, $event_id, $user_id)
+{
+    return (new SqlSelect($conn, array('Type'), 'Relation',
+        array(sprintf("(EventID='%s')", $event_id),
+            sprintf("(UserID='%s')", $user_id))))->execute_sql()[0]['Type'];
+
+}
 
 $q_parameter = $_GET['q'];
 switch ($q_parameter) {
@@ -234,6 +262,20 @@ switch ($q_parameter) {
         $event_args_to_get = array_slice($EVENT_ARGS, 3);
 
         $creator_id = $event_args_to_get['CreaterID'];
+        $role_id = (new SqlSelect($conn, array('Role'), 'User',
+            array(sprintf("UserID='%s'", $creator_id))))->execute_sql()[0]['Role'];
+
+        $event_limit = (new SqlSelect($conn, array('CreateEventLimit'), 'Role',
+            array(sprintf("RoleID='%s'", $role_id))))->execute_sql()[0]['CreateEventLimit'];
+
+        $event_count = (new SqlSelect($conn, array('COUNT(*)'), 'Relation',
+            array(sprintf("(UserID='%s')", $creator_id),
+                sprintf("(Type='%s')", $USER_EVENT_RELATION_CREATE))))->execute_sql()[0]['COUNT(*)'];
+
+        if ((int)$event_count > (int)$event_limit) {
+            echo sprintf('免费用户仅能创建%d个事件，付费请联系xxxxxxx', $event_limit);
+            break;
+        }
 
         $event_args_to_use = array();
         foreach ($event_args_to_get as $event_arg) {
@@ -250,9 +292,7 @@ switch ($q_parameter) {
         $show_contact = $_POST['showcontact'];
         $message = $_POST['Message'];
 
-        $user_event_relation = (new SqlSelect($conn, array('Type'), 'Relation',
-            array(sprintf("EventID='%s'", $event_id),
-                sprintf("UserID='%s'", $user_id))))->execute_sql()[0]['Type'];
+        $user_event_relation = get_user_event_relation($conn, $event_id, $user_id);
 
         switch ($user_event_relation) {
             case $USER_EVENT_RELATION_MEMBER:
@@ -287,24 +327,114 @@ switch ($q_parameter) {
         $event_info = (new SqlSelect($conn, array('*'), 'Event',
             array(sprintf("EventID='%s'", $event_id))))->execute_sql()[0];
 
-        $member_event_info = (new SqlSelect($conn, array('*'), 'Relation',
-            array(sprintf("(EventID='%s')", $event_id),
-                sprintf("(Type='%s' OR Type='%s')", $USER_EVENT_RELATION_MEMBER, $USER_EVENT_RELATION_CREATE)
-            )))->execute_sql();
-
-        $members = array();
-        foreach ($member_event_info as $member) {
-            $member_info = (new SqlSelect($conn, array('*'), 'User',
-                array(sprintf("UserID='%s'", $member['UserID']))))->execute_sql()[0];
-
-            $member_info['ShowContact'] = $member['ShowContact'];
-            $member_info['Message'] = $member['Message'];
-            array_push($members, $member_info);
-        }
+        $members = get_event_member_detailed_info($conn, $event_id);
 
         $result = array('EventInfo' => $event_info, 'Members' => $members);
         echo json_encode($result);
         break;
+
+    case 'getAllEventInfo':
+        $event_infos = (new SqlSelect($conn, array('*'), 'Event'))->execute_sql();
+        $results = array();
+        foreach ($event_infos as $event_info) {
+            $members = get_event_member_detailed_info($conn, $event_info['EventID']);
+            $result = array('EventInfo' => $event_info, 'Members' => $members);
+            array_push($results, $result);
+        }
+
+        echo json_encode($results);
+        break;
+
+    //get
+    case 'getAllEventsRalated':
+        $user_id = $_GET['UserID'];
+        $result_events = array();
+        $user_relations = (new SqlSelect($conn, array('*'), 'Relation',
+            array(sprintf("UserID='%s'", $user_id))))->execute_sql();
+        foreach ($user_relations as $relation) {
+            switch ($relation['Type']) {
+                case  $USER_EVENT_RELATION_CREATE:
+                    array_push($result_events[0], $relation['EventID']);
+                    break;
+                case $USER_EVENT_RELATION_MEMBER:
+                    array_push($result_events[1], $relation['EventID']);
+                    break;
+                case $USER_EVENT_RELATION_CHECKING:
+                    array_push($result_events[2], $relation['EventID']);
+                    break;
+            }
+
+            //todo: 没理解要干啥。
+        }
+        break;
+
+    //post
+    case 'admitMembership':
+        $event_id = $_POST['EventID'];
+        $user_id = $_POST['UserID'];
+
+        $current_member_count = (new SqlSelect($conn, array('COUNT(*)'), 'Relation',
+            array(sprintf("(EventID='%s')", $event_id),
+                sprintf("(Type='%s')", $USER_EVENT_RELATION_MEMBER))))->execute_sql()[0]['COUNT(*)'];
+
+        $member_limit = (new SqlSelect($conn, array('PersonLimit'), 'Event',
+            array(sprintf("(EventID='%s')", $event_id))))->execute_sql()[0]['PersonLimit'];
+
+        if ($current_member_count >= $member_limit) {
+            echo '参加人数已满';
+        } else {
+            $sql_update = new SqlUpdate($conn, 'Relation', array('Type' => $USER_EVENT_RELATION_MEMBER),
+                array(sprintf("(EventID='%s')", $event_id), sprintf("(UserID='%s')", $user_id)));
+            echo common_execute_procedure($sql_update);
+        }
+        break;
+
+    //post
+    case 'quitEvent':
+        $event_id = $_POST['EventID'];
+        $user_id = $_POST['UserID'];
+
+        $user_event_relation = get_user_event_relation($conn, $event_id, $user_id);
+
+        if ($user_event_relation == $USER_EVENT_RELATION_MEMBER) {
+            $sql_delete = new SqlDelete($conn, 'Relation',
+                array(sprintf("(EventID='%s')", $event_id),
+                    sprintf("(UserID='%s')", $user_id)));
+            echo common_execute_procedure($sql_delete);
+        } else {
+            echo '错误，您不在本事件中';
+        }
+        break;
+
+    //post
+    case 'deleteEvent':
+        $event_id = $_POST['EventID'];
+        $user_id = $_POST['UserID'];
+
+        $user_event_relation = get_user_event_relation($conn, $event_id, $user_id);
+        if ($user_event_relation == $USER_EVENT_RELATION_CREATE) {
+            $sql_delete = new SqlDelete($conn, 'Relation',
+                array(sprintf("(EventID='%s')", $event_id)));
+            echo common_execute_procedure($sql_delete, null);
+
+            $sql_delete = new SqlDelete($conn, 'Event', array(sprintf("(EventID='%s')", $event_id)));
+            echo common_execute_procedure($sql_delete);
+        } else {
+            echo '错误，您不是本事件的创建者';
+        }
+        break;
+
+    //post
+    case 'insertOrUpdateUser':
+        $user_id = $_POST['UserID'];
+        $user_exists = (new SqlSelect($conn, array('COUNT(*)'), 'User',
+                array(sprintf("UserID='%s'", $user_id))))->execute_sql()[0]['COUNT(*)'] == 1;
+        if ($user_exists){
+            //todo: 无法判断新用户信息是未输入还是应该改为空。
+        }
+        break;
+
+
     default:
         echo 'no such method';
 }
