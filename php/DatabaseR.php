@@ -1,4 +1,6 @@
 <?php
+
+
 /**
  * Created by PhpStorm.
  * User: uranu
@@ -218,7 +220,8 @@ function common_execute_procedure(ISql $sql, $succeed = 'good', $failed = null)
 
 $EVENT_ARGS = array('id', 'EventID', 'CreatTimeStamp', 'Country', 'City', 'CreaterID', 'Latitude', 'Longitude',
     'Address', 'EventName', 'EventSign', 'Type', 'Ginder', 'AvgCost', 'NeedPermission', 'ImagePath', 'EndTime',
-    'Avaliable', 'CreaterContact', 'needContact', 'PersonLimit', 'PaymentMethod', 'Discription', 'PersonCondition');
+    'Avaliable', 'CreaterContact', 'needContact', 'PersonLimit', 'PaymentMethod', 'Discription', 'PersonCondition',
+    'EventDuration');
 $USER_INFO = array('Name', 'Role', 'Gender', 'Wechat', 'Phone', 'Email', 'QQ', 'WhatsApp');
 $USER_EVENT_RELATION_MEMBER = 'Member';
 $USER_EVENT_RELATION_CREATE = 'Create';
@@ -293,11 +296,20 @@ switch ($q_parameter) {
         $event_id_ending = (substr($last_event_id, 0, 10) == $event_id_prefix)
             ? ((int)substr($last_event_id, -4) + 1) : 1;
 
+        //take args from $_GET
         $event_args_to_use = array();
         foreach ($event_args_to_get as $event_arg) {
             $event_args_to_use[$event_arg] = sprintf("'%s'", $_GET[$event_arg]);
         }
+
+
+        //modify EventID
         $event_args_to_use['EventID'] = sprintf("'%s%04d'", $event_id_prefix, $event_id_ending);
+        echo json_encode($event_args_to_use);
+        $event_args_to_use['EventDuration'] =
+            (new DateTime($_GET['EndTime']))->
+            add(new DateInterval(sprintf('P%dD',$_GET['EventDuration'])))->
+            format('Y-m-d H:i:s');
         $sql_insert = new SqlInsert($conn, 'Event', $event_args_to_use);
         echo common_execute_procedure($sql_insert, sprintf("%s%04d", $event_id_prefix, $event_id_ending));
 
@@ -307,6 +319,7 @@ switch ($q_parameter) {
             'Type' => sprintf("'%s'", $USER_EVENT_RELATION_CREATE),
             'ShowContact' => 1));
         common_execute_procedure($sql_insert, null);
+
         break;
 
     case 'joinEvent':
