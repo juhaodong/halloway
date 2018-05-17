@@ -1,6 +1,4 @@
 <?php
-
-
 /**
  * Created by PhpStorm.
  * User: uranu
@@ -234,7 +232,7 @@ function get_event_member_detailed_info(mysqli $conn, $event_id)
     global $USER_EVENT_RELATION_CREATE;
     $member_event_info = (new SqlSelect($conn, array('*'), 'Relation',
         array(sprintf("(EventID='%s')", $event_id),
-            sprintf("(Type='%s' OR Type='%s')", $USER_EVENT_RELATION_MEMBER, $USER_EVENT_RELATION_CREATE)
+            //sprintf("(Type='%s' OR Type='%s')", $USER_EVENT_RELATION_MEMBER, $USER_EVENT_RELATION_CREATE)
         )))->execute_sql();
 
     $members = array();
@@ -260,7 +258,18 @@ function get_user_event_relation(mysqli $conn, $event_id, $user_id)
 function get_full_event_info(mysqli $conn, $event_id)
 {
     $event_info = (new SqlSelect($conn, array('*'), 'Event',
-        array(sprintf("(EventID='%s')", $event_id), sprintf("(EndTime>NOW())"))))->execute_sql()[0];
+        array(sprintf("(EventID='%s')", $event_id), sprintf("(EventDuration>NOW())"))))->execute_sql()[0];
+
+    if (!$event_info) {
+        return null;
+    }
+    $end_time = DateTime::createFromFormat(
+        'Y-m-d H:i:s', substr($event_info['EventDuration'], 0, 19));
+    $start_time = DateTime::createFromFormat(
+        'Y-m-d H:i:s', substr($event_info['EndTime'], 0, 19));
+    $diff = $end_time->diff($start_time);
+
+    $event_info['EventDuration'] = $diff->format('%d');
 
     $members = get_event_member_detailed_info($conn, $event_id);
 
@@ -305,11 +314,12 @@ switch ($q_parameter) {
 
         //modify EventID
         $event_args_to_use['EventID'] = sprintf("'%s%04d'", $event_id_prefix, $event_id_ending);
-        echo json_encode($event_args_to_use);
-        $event_args_to_use['EventDuration'] =
-            (new DateTime($_GET['EndTime']))->
-            add(new DateInterval(sprintf('P%dD',$_GET['EventDuration'])))->
-            format('Y-m-d H:i:s');
+
+        //modify EventDuration
+        $datetime = DateTime::createFromFormat('Y-m-d H:i:s', $_GET['EndTime']);
+        $added_datetime = $datetime->add(new DateInterval(sprintf('P%dD', $_GET['EventDuration'])));
+        $event_args_to_use['EventDuration'] = sprintf("'%s'", $added_datetime->format('Y-m-d H:i:s'));
+
         $sql_insert = new SqlInsert($conn, 'Event', $event_args_to_use);
         echo common_execute_procedure($sql_insert, sprintf("%s%04d", $event_id_prefix, $event_id_ending));
 
@@ -363,9 +373,19 @@ switch ($q_parameter) {
 
     case 'getAllEventInfo':
         $event_infos = (new SqlSelect($conn, array('*'), 'Event',
-            array(sprintf("(EndTime>NOW())"))))->execute_sql();
+            array("(EventDuration>NOW())")))->execute_sql();
+
         $results = array();
         foreach ($event_infos as $event_info) {
+            $end_time = DateTime::createFromFormat(
+                'Y-m-d H:i:s', substr($event_info['EventDuration'], 0, 19));
+            $start_time = DateTime::createFromFormat(
+                'Y-m-d H:i:s', substr($event_info['EndTime'], 0, 19));
+            $diff = $end_time->diff($start_time);
+
+            $diff->format('%d');
+
+            $event_info['EventDuration'] = $diff;
             $members = get_event_member_detailed_info($conn, $event_info['EventID']);
             $result = array('EventInfo' => $event_info, 'Members' => $members);
             array_push($results, $result);
@@ -376,7 +396,16 @@ switch ($q_parameter) {
 
     case 'getAllEventInfoWithoutMembers':
         $event_infos = (new SqlSelect($conn, array('*'), 'Event',
-            array(sprintf("(EndTime>NOW())"))))->execute_sql();
+            array(sprintf("(EventDuration>NOW())"))))->execute_sql();
+        foreach ($event_infos as $event_info) {
+            $end_time = DateTime::createFromFormat(
+                'Y-m-d H:i:s', substr($event_info['EventDuration'], 0, 19));
+            $start_time = DateTime::createFromFormat(
+                'Y-m-d H:i:s', substr($event_info['EndTime'], 0, 19));
+            $diff = $end_time->diff($start_time);
+
+            $event_info['EventDuration'] = $diff->format('%d');
+        }
         echo json_encode($event_infos);
         break;
 
@@ -388,14 +417,17 @@ switch ($q_parameter) {
         foreach ($user_relations as $relation) {
             switch ($relation['Type']) {
                 case  $USER_EVENT_RELATION_CREATE:
-                    array_push($result_events[0], get_full_event_info($conn, $relation['EventID']));
-                    $checking_relations = (new SqlSelect($conn, array('*'), 'Relation',
-                        array(sprintf("Type='%s'", $USER_EVENT_RELATION_CHECKING),
-                            sprintf("EventID='%s'", $relation['EventID']))))->execute_sql();
-                    foreach ($checking_relations as $checking_relation) {
-                        $event_info = get_full_event_info($conn, $checking_relation['EventID']);
-                        $event_info['inUser'] = $checking_relation['UserID'];
-                        array_push($result_events[3], $event_info);
+                    $event_info = get_full_event_info($conn, $relation['EventID']);
+                    if ($event_info) {
+                        array_push($result_events[0], $event_info);
+                        $checking_relations = (new SqlSelect($conn, array('*'), 'Relation',
+                            array(sprintf("Type='%s'", $USER_EVENT_RELATION_CHECKING),
+                                sprintf("EventID='%s'", $relation['EventID']))))->execute_sql();
+                        foreach ($checking_relations as $checking_relation) {
+                            $event_info = get_full_event_info($conn, $checking_relation['EventID']);
+                            $event_info['inUser'] = $checking_relation['UserID'];
+                            array_push($result_events[3], $event_info);
+                        }
                     }
                     break;
                 case $USER_EVENT_RELATION_MEMBER:
@@ -485,6 +517,9 @@ switch ($q_parameter) {
         }
 
         if ($user_exists) {
+            if (!in_array('Role',array_keys($_GET))){
+                $kv_to_update_or_insert['Role']="'R0001'";
+            }
             $sql_update = new SqlUpdate($conn, 'User', $kv_to_update_or_insert,
                 array(sprintf("UserID='%s'", $user_id)));
             echo common_execute_procedure($sql_update);
@@ -495,7 +530,7 @@ switch ($q_parameter) {
         break;
 
     case 'searchEvent':
-        $event_search_keys = array('keyword', 'type', 'spaceRemaining', 'city', 'country', 'endTime');
+        $event_search_keys = array('keyword', 'type', 'spaceRemaining', 'city', 'country', 'endTime', 'eventDuration');
         $predicates = array();
 
         if ($_GET[$event_search_keys[0]]) {
@@ -524,6 +559,12 @@ switch ($q_parameter) {
             array_push($predicates, sprintf("(EndTime>'%s')", $_GET[$event_search_keys[5]]));
         }
 
+        if ($_GET[$event_search_keys[6]]) {
+            array_push($predicates, sprintf("(EventDuration>'%s')", $_GET[$event_search_keys[6]]));
+        } else {
+            array_push($predicates, "(EventDuration>NOW())");
+        }
+        //echo (new SqlSelect($conn, array('*'), 'Event', $predicates))->get_sql();
         $events = (new SqlSelect($conn, array('*'), 'Event', $predicates))->execute_sql();
         $results = array();
         foreach ($events as $event) {
