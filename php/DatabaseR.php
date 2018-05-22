@@ -204,6 +204,38 @@ class SqlDelete implements ISql
     }
 }
 
+class SqlFreeQuery implements ISql
+{
+    private $sql;
+    private $conn;
+
+    public function __construct(mysqli $conn, $sql)
+    {
+        $this->conn = $conn;
+        $this->sql = $sql;
+    }
+
+    public function get_sql()
+    {
+        return $this->sql;
+    }
+
+    /**
+     * @return bool|mysqli_result
+     */
+    public function execute_sql()
+    {
+        //echo $this->sql;
+        $query_result = $this->conn->query($this->sql);
+        return $query_result;
+    }
+
+    public function get_conn()
+    {
+        return $this->conn;
+    }
+}
+
 function common_execute_procedure(ISql $sql, $succeed = 'good', $failed = null)
 {
     $result = $sql->execute_sql();
@@ -232,7 +264,7 @@ function get_event_member_detailed_info(mysqli $conn, $event_id)
     global $USER_EVENT_RELATION_CREATE;
     $member_event_info = (new SqlSelect($conn, array('*'), 'Relation',
         array(sprintf("(EventID='%s')", $event_id),
-            //sprintf("(Type='%s' OR Type='%s')", $USER_EVENT_RELATION_MEMBER, $USER_EVENT_RELATION_CREATE)
+            sprintf("(Type='%s' OR Type='%s')", $USER_EVENT_RELATION_MEMBER, $USER_EVENT_RELATION_CREATE)
         )))->execute_sql();
 
     $members = array();
@@ -425,7 +457,7 @@ switch ($q_parameter) {
                                 sprintf("EventID='%s'", $relation['EventID']))))->execute_sql();
                         foreach ($checking_relations as $checking_relation) {
                             $event_info = get_full_event_info($conn, $checking_relation['EventID']);
-                            $event_info['inUser'] = $checking_relation['UserID'];
+                            $event_info['inUser'] = array($checking_relation['UserID'], $checking_relation['Message']);
                             array_push($result_events[3], $event_info);
                         }
                     }
@@ -517,8 +549,8 @@ switch ($q_parameter) {
         }
 
         if ($user_exists) {
-            if (!in_array('Role',array_keys($_GET))){
-                $kv_to_update_or_insert['Role']="'R0001'";
+            if (!in_array('Role', array_keys($_GET))) {
+                $kv_to_update_or_insert['Role'] = "'R0001'";
             }
             $sql_update = new SqlUpdate($conn, 'User', $kv_to_update_or_insert,
                 array(sprintf("UserID='%s'", $user_id)));
@@ -582,6 +614,13 @@ switch ($q_parameter) {
         $user_id = $_GET['UserID'];
         echo json_encode((new SqlSelect($conn, array('*'), 'User',
             array(sprintf("UserID='%s'", $user_id))))->execute_sql()[0]);
+        break;
+
+    case 'deleteExpiredEvents':
+        $sql_delete = new SqlDelete($conn, 'Events', array('EventDuration<NOW()'));
+        common_execute_procedure($sql_delete, null);
+        $sql_delete = new SqlDelete($conn, 'Relation', array('EventID NOT IN (select EventID from Event)'));
+        common_execute_procedure($sql_delete);
         break;
 
     default:
