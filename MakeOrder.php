@@ -1,17 +1,17 @@
 <?php
 header("Access-Control-Allow-Origin: *");
 header('Content-type: application/json');
-$indexInfo=fopen("Orders/index.txt","r");
+$indexInfo=fopen("Orders/pages.txt","r");
 $dateInfo=substr(fgets($indexInfo),0,-1);
 $currentData=date('YmdHi');
 
 if(strcmp($dateInfo,$currentData)!=0){
     $index=1;
-    fwrite(fopen("Orders/index.txt","w"),$currentData."\n".$index);
+    fwrite(fopen("Orders/pages.txt","w"),$currentData."\n".$index);
 }else{
     $index=intval(fgets($indexInfo));
     $index=$index+1;
-    fwrite(fopen("Orders/index.txt","w"),$currentData."\n".$index);
+    fwrite(fopen("Orders/pages.txt","w"),$currentData."\n".$index);
 
 }
 

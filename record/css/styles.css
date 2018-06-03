@@ -1,0 +1,58 @@
+.demo-card-wide.mdl-card {
+    width: calc(100% - 75px);
+
+
+}
+.wideCard{
+    margin: 15px;
+    width: calc(100% - 15px);
+    height: 256px;
+}
+.demo-card-wide > .mdl-card__title {
+    color: #fff;
+    height: 176px;
+    background: url('https://getmdl.io/assets/demos/welcome_card.jpg') center / cover;
+}
+.demo-card-wide > .mdl-card__menu {
+    color: #fff;
+}
+main{
+    margin-top: 150px;
+    padding: 40px;
+    min-height: 502px;
+}
+.demo-card-event.mdl-card {
+    margin: 15px;
+    width: 256px;
+    height: 256px;
+    background: #3E4EB8;
+}
+.demo-card-event > .mdl-card__actions {
+    border-color: rgba(255, 255, 255, 0.2);
+}
+.demo-card-event > .mdl-card__title {
+    align-items: flex-start;
+}
+.demo-card-event > .mdl-card__title > h4 {
+    margin-top: 0;
+}
+.demo-card-event > .mdl-card__actions {
+    display: flex;
+    box-sizing:border-box;
+    align-items: center;
+}
+.demo-card-event > .mdl-card__actions > .material-icons {
+    padding-right: 10px;
+}
+.demo-card-event > .mdl-card__title,
+.demo-card-event > .mdl-card__actions,
+.demo-card-event > .mdl-card__actions > .mdl-button {
+    color: #fff;
+}
+
+.flowContainer{
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+
+}

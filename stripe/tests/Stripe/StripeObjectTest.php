@@ -215,7 +215,7 @@ EOS;
     public function testSerializeParametersOnArrayThatShortens()
     {
         $obj = StripeObject::constructFrom([
-            'foo' => ['0-index', '1-index', '2-index'],
+            'foo' => ['0-pages', '1-pages', '2-pages'],
         ]);
         $obj->foo = ['new-value'];
         $this->assertSame(['foo' => ['new-value']], $obj->serializeParameters());
@@ -224,7 +224,7 @@ EOS;
     public function testSerializeParametersOnArrayThatLengthens()
     {
         $obj = StripeObject::constructFrom([
-            'foo' => ['0-index', '1-index', '2-index'],
+            'foo' => ['0-pages', '1-pages', '2-pages'],
         ]);
         $obj->foo = array_fill(0, 4, 'new-value');
         $this->assertSame(['foo' => array_fill(0, 4, 'new-value')], $obj->serializeParameters());
@@ -252,9 +252,9 @@ EOS;
     public function testSerializeParametersOnUnchangedArray()
     {
         $obj = StripeObject::constructFrom([
-            'foo' => ['0-index', '1-index', '2-index'],
+            'foo' => ['0-pages', '1-pages', '2-pages'],
         ]);
-        $obj->foo = ['0-index', '1-index', '2-index'];
+        $obj->foo = ['0-pages', '1-pages', '2-pages'];
         $this->assertSame([], $obj->serializeParameters());
     }
 
