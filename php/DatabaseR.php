@@ -327,7 +327,7 @@ switch ($q_parameter) {
                 sprintf("(Type='%s')", $USER_EVENT_RELATION_CREATE))))->execute_sql()[0]['COUNT(*)'];
 
         if ((int)$event_count > (int)$event_limit) {
-            echo sprintf('免费用户仅能创建%d个事件，付费请联系xxxxxxx', $event_limit);
+            echo sprintf('每位用户仅能创建%d个事件。', $event_limit);
             break;
         }
 
